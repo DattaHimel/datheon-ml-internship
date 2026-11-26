@@ -9,6 +9,7 @@ Jupyter notebook with evaluation metrics and charts.
 | 1 | Multi-Class Benchmark Classification (Iris) | StandardScaler, 80/20 split, Logistic Regression, Decision Tree, confusion matrix, decision boundaries | [Iris_Classification.ipynb](task1_iris_classification/Iris_Classification.ipynb) |
 | 2 | Real Estate Housing Price Prediction (California) | Imputation, one-hot encoding, feature engineering, VIF, OLS / Ridge / Lasso, GridSearchCV, residual analysis | [Housing_Price_Regression.ipynb](task2_housing_regression/Housing_Price_Regression.ipynb) |
 | 3 | Predictive Customer Churn Classifier (Telco) | Data cleaning, one-hot encoding, SMOTE, class weighting, Random Forest, XGBoost, stratified CV, ROC-AUC, feature importance | [Customer_Churn_Classifier.ipynb](task3_customer_churn/Customer_Churn_Classifier.ipynb) |
+| 4 | NLP Sentiment Classification on Movie Reviews (IMDB) | Regex + NLTK cleaning, stopwords, lemmatisation, TF-IDF (5,000 features), Multinomial Naive Bayes, Logistic Regression, `predict_sentiment()` | [Sentiment_Analysis_TFIDF.ipynb](task4_sentiment_nlp/Sentiment_Analysis_TFIDF.ipynb) |
 
 ---
 
@@ -223,6 +224,82 @@ check and tenure.
 
 ---
 
+## Task 4: NLP Sentiment Classification on Movie Reviews (TF-IDF)
+
+**Goal:** clean raw review text, turn it into TF-IDF features and classify each review as positive or negative,
+with a helper function that classifies any custom sentence.
+
+**Dataset:** a balanced random sample of **20,000 reviews** (10,000 positive, 10,000 negative) from the IMDB Dataset
+of 50K Movie Reviews (Maas et al., 2011), stored gzipped in
+[`data/imdb_reviews_20k.csv.gz`](data/imdb_reviews_20k.csv.gz) (about 10 MB) to keep the repository light.
+
+### Pipeline
+
+```
+imdb_reviews_20k.csv.gz (20,000 reviews, 50/50 positive/negative)
+        │
+        ▼
+EDA: class balance, review lengths, HTML tags in 59% of reviews
+        │
+        ▼
+clean_text(): lowercase → strip HTML & URLs → expand "n't" → remove punctuation/digits
+              → remove NLTK stopwords (keeping not / no / never) → WordNet lemmatisation
+        │
+        ▼
+Stratified 80/20 split (16,000 train / 4,000 test)
+        │
+        ▼
+TfidfVectorizer(max_features=5000, ngram_range=(1, 2), sublinear_tf=True), fitted on training text only
+        │
+        ├──────────────────────────┐
+        ▼                          ▼
+MultinomialNB               LogisticRegression
+        │                          │
+        └────────────┬─────────────┘
+                     ▼
+Accuracy / precision / recall / F1 / ROC-AUC, 5-fold CV, confusion matrices,
+ROC curves, most informative words, predict_sentiment() helper
+```
+
+### Results (test set, 4,000 reviews)
+
+| Model | Accuracy | Precision | Recall | F1-score | ROC-AUC | 5-fold CV accuracy |
+|-------|---------:|----------:|-------:|---------:|--------:|-------------------:|
+| Multinomial Naive Bayes | 0.8620 | 0.8657 | 0.8570 | 0.8613 | 0.9414 | 0.8557 ± 0.0052 |
+| Logistic Regression | **0.8938** | 0.8900 | 0.8985 | **0.8943** | **0.9617** | 0.8821 ± 0.0026 |
+
+Logistic Regression is about 3 points more accurate. Naive Bayes is a strong baseline that trains in about
+0.01 seconds.
+
+### Try it
+
+```python
+predict_sentiment("An absolute masterpiece with brilliant acting and a beautiful soundtrack.")
+# {'label': 'positive', 'confidence': 0.95}
+
+predict_sentiment("Worst film I have seen in years. A complete waste of time and money.")
+# {'label': 'negative', 'confidence': 0.99}
+```
+
+The notebook also has an optional interactive cell (set `INTERACTIVE = True`) for typing your own reviews.
+
+![Metrics and confusion matrices](task4_sentiment_nlp/images/metrics_and_confusion_matrices.png)
+
+![Most informative words](task4_sentiment_nlp/images/most_informative_words.png)
+
+<details>
+<summary>More charts</summary>
+
+![Class balance and review length](task4_sentiment_nlp/images/class_balance_and_length.png)
+
+![Top words per class](task4_sentiment_nlp/images/top_words_per_class.png)
+
+![ROC curves](task4_sentiment_nlp/images/roc_curves.png)
+
+</details>
+
+---
+
 ## Installation
 
 Requires **Python 3.10 or newer**.
@@ -259,18 +336,22 @@ step uses `random_state=42`.
 ├── .gitignore
 ├── data/
 │   ├── california_housing.csv          # Task 2 dataset
-│   └── telco_customer_churn.csv        # Task 3 dataset
+│   ├── telco_customer_churn.csv        # Task 3 dataset
+│   └── imdb_reviews_20k.csv.gz         # Task 4 dataset (gzipped)
 ├── task1_iris_classification/
 │   ├── Iris_Classification.ipynb       # executed notebook with all outputs
 │   └── images/                         # charts exported for this README
 ├── task2_housing_regression/
 │   ├── Housing_Price_Regression.ipynb  # executed notebook with all outputs
 │   └── images/
-└── task3_customer_churn/
-    ├── Customer_Churn_Classifier.ipynb # executed notebook with all outputs
+├── task3_customer_churn/
+│   ├── Customer_Churn_Classifier.ipynb # executed notebook with all outputs
+│   └── images/
+└── task4_sentiment_nlp/
+    ├── Sentiment_Analysis_TFIDF.ipynb  # executed notebook with all outputs
     └── images/
 ```
 
 ## Tech stack
 
-Python · NumPy · Pandas · Scikit-Learn (Pipeline, ColumnTransformer, GridSearchCV) · imbalanced-learn (SMOTE) · XGBoost · Matplotlib · Seaborn · Jupyter
+Python · NumPy · Pandas · Scikit-Learn (Pipeline, ColumnTransformer, GridSearchCV) · imbalanced-learn (SMOTE) · XGBoost · NLTK · Matplotlib · Seaborn · Jupyter
