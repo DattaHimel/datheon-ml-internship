@@ -8,6 +8,7 @@ Jupyter notebook with evaluation metrics and charts.
 |---|------|-----------|----------|
 | 1 | Multi-Class Benchmark Classification (Iris) | StandardScaler, 80/20 split, Logistic Regression, Decision Tree, confusion matrix, decision boundaries | [Iris_Classification.ipynb](task1_iris_classification/Iris_Classification.ipynb) |
 | 2 | Real Estate Housing Price Prediction (California) | Imputation, one-hot encoding, feature engineering, VIF, OLS / Ridge / Lasso, GridSearchCV, residual analysis | [Housing_Price_Regression.ipynb](task2_housing_regression/Housing_Price_Regression.ipynb) |
+| 3 | Predictive Customer Churn Classifier (Telco) | Data cleaning, one-hot encoding, SMOTE, class weighting, Random Forest, XGBoost, stratified CV, ROC-AUC, feature importance | [Customer_Churn_Classifier.ipynb](task3_customer_churn/Customer_Churn_Classifier.ipynb) |
 
 ---
 
@@ -151,6 +152,77 @@ of room: prices are capped at 500,001 USD, and the errors grow as prices rise.
 
 ---
 
+## Task 3: Predictive Customer Churn Classifier (Random Forest & XGBoost)
+
+**Goal:** predict which telecom customers will cancel their subscription, handling a strong class imbalance
+(26.5% churners) and reaching a **ROC-AUC above 0.80**.
+
+**Dataset:** IBM Telco Customer Churn (7,043 customers, 21 columns), stored in
+[`data/telco_customer_churn.csv`](data/telco_customer_churn.csv).
+
+### Pipeline
+
+```
+telco_customer_churn.csv (7,043 rows, 26.5% churn)
+        │
+        ▼
+Cleaning: TotalCharges text → numeric; 11 blanks are new customers (tenure 0) → 0; drop customerID
+        │
+        ▼
+EDA: class imbalance, churn rate by contract / internet / payment / add-ons, tenure & charges distributions
+        │
+        ▼
+Stratified 80/20 train/test split
+        │
+        ▼
+ColumnTransformer: OneHotEncoder (15 categorical) + StandardScaler (4 numeric)
+        │
+        ├─────────────────────────────────┐
+        ▼                                 ▼
+imblearn Pipeline:                  imblearn Pipeline:
+  SMOTE (training folds only)         XGBClassifier(scale_pos_weight ≈ 2.77)
+  → RandomForestClassifier
+        │                                 │
+        ▼                                 ▼
+GridSearchCV, 5-fold stratified CV, scored by ROC-AUC
+        │                                 │
+        └────────────────┬────────────────┘
+                         ▼
+Test evaluation: ROC-AUC, classification report, ROC curves,
+confusion matrices, top 10 feature importances
+```
+
+### Results (test set, 1,409 customers)
+
+| Model | Test ROC-AUC | CV ROC-AUC (5-fold) | Accuracy | Precision (churn) | Recall (churn) | F1 (churn) |
+|-------|------------:|--------------------:|---------:|------------------:|---------------:|-----------:|
+| Random Forest + SMOTE | **0.8376** | 0.8438 ± 0.0091 | 0.7630 | 0.5403 | 0.7166 | 0.6161 |
+| XGBoost + scale_pos_weight | **0.8468** | 0.8493 ± 0.0113 | 0.7502 | 0.5191 | 0.7995 | 0.6295 |
+
+Both models clear the 0.80 ROC-AUC target, and their cross-validation scores are close to their test scores.
+XGBoost catches 80% of real churners (299 of 374). Both models rank a month-to-month contract and having no online
+security as the strongest churn signals, followed by fiber optic internet, no tech support, payment by electronic
+check and tenure.
+
+![ROC curves](task3_customer_churn/images/roc_curves.png)
+
+![Confusion matrices](task3_customer_churn/images/confusion_matrices.png)
+
+![Top 10 feature importances](task3_customer_churn/images/feature_importance_top10.png)
+
+<details>
+<summary>More charts</summary>
+
+![Target distribution](task3_customer_churn/images/target_distribution.png)
+
+![Churn rate by category](task3_customer_churn/images/churn_by_category.png)
+
+![Numeric distributions](task3_customer_churn/images/numeric_distributions.png)
+
+</details>
+
+---
+
 ## Installation
 
 Requires **Python 3.10 or newer**.
@@ -186,15 +258,19 @@ step uses `random_state=42`.
 ├── requirements.txt
 ├── .gitignore
 ├── data/
-│   └── california_housing.csv          # Task 2 dataset
+│   ├── california_housing.csv          # Task 2 dataset
+│   └── telco_customer_churn.csv        # Task 3 dataset
 ├── task1_iris_classification/
 │   ├── Iris_Classification.ipynb       # executed notebook with all outputs
 │   └── images/                         # charts exported for this README
-└── task2_housing_regression/
-    ├── Housing_Price_Regression.ipynb  # executed notebook with all outputs
+├── task2_housing_regression/
+│   ├── Housing_Price_Regression.ipynb  # executed notebook with all outputs
+│   └── images/
+└── task3_customer_churn/
+    ├── Customer_Churn_Classifier.ipynb # executed notebook with all outputs
     └── images/
 ```
 
 ## Tech stack
 
-Python · NumPy · Pandas · Scikit-Learn (Pipeline, ColumnTransformer, GridSearchCV) · Matplotlib · Seaborn · Jupyter
+Python · NumPy · Pandas · Scikit-Learn (Pipeline, ColumnTransformer, GridSearchCV) · imbalanced-learn (SMOTE) · XGBoost · Matplotlib · Seaborn · Jupyter
